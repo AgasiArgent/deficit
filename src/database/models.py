@@ -44,7 +44,9 @@ class Measurement(Base):
 
 
 # Database connection and session setup
-DATABASE_URL = "sqlite:///./deficit.db"
+import os
+DB_PATH = os.getenv('DB_PATH', './data/deficit.db')
+DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 engine = create_engine(DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -54,6 +56,11 @@ def init_db():
     """
     Инициализация базы данных - создание всех таблиц.
     """
+    # Создать директорию для базы данных если не существует
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+
     Base.metadata.create_all(bind=engine)
     print("✅ Database initialized")
 

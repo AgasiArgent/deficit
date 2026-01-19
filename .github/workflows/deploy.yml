@@ -1,0 +1,92 @@
+name: Deploy Deficit Bot
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:  # Позволяет запускать вручную
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/deficit-bot:latest
+            ghcr.io/${{ github.repository_owner }}/deficit-bot:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            cd /root/deficit || mkdir -p /root/deficit && cd /root/deficit
+
+            # Создать .env если не существует
+            if [ ! -f .env ]; then
+              echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
+              echo "OWNER_USER_ID=${{ secrets.OWNER_USER_ID }}" >> .env
+            fi
+
+            # Создать docker-compose.yml если не существует
+            if [ ! -f docker-compose.yml ]; then
+              cat > docker-compose.yml << 'EOF'
+            version: '3.8'
+            services:
+              bot:
+                image: ghcr.io/${{ github.repository_owner }}/deficit-bot:latest
+                container_name: deficit-bot
+                restart: unless-stopped
+                env_file:
+                  - .env
+                volumes:
+                  - ./data:/app/data
+                logging:
+                  driver: "json-file"
+                  options:
+                    max-size: "10m"
+                    max-file: "3"
+            EOF
+            fi
+
+            # Логин в GitHub Container Registry
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Pull latest образ
+            docker pull ghcr.io/${{ github.repository_owner }}/deficit-bot:latest
+
+            # Остановить старый контейнер
+            docker-compose down || true
+
+            # Запустить новый контейнер
+            docker-compose up -d
+
+            # Очистить старые образы
+            docker image prune -af --filter "until=24h"
+
+            # Показать статус
+            docker-compose ps
+            docker-compose logs --tail=50 bot

@@ -44,6 +44,7 @@ Thumbs.db
 *.sqlite3
 .env
 config.ini
+data/
 
 # Telegram bot token
 bot_token.txt
