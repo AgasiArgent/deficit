@@ -6,10 +6,10 @@ Telegram-бот для отслеживания показателей тела 
 import os
 import logging
 from dotenv import load_dotenv
-from telegram.ext import Application, CommandHandler
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 
 from database.models import init_db
-from bot.handlers import start, graph, delete
+from bot.handlers import start, graph, delete, graph_period_callback
 from bot.conversations import add_conversation_handler
 
 # Загрузить переменные окружения
@@ -48,6 +48,9 @@ def main():
     application.add_handler(add_conversation_handler)  # Conversation для /add
     application.add_handler(CommandHandler("graph", graph))
     application.add_handler(CommandHandler("delete", delete))
+
+    # Добавить callback handlers
+    application.add_handler(CallbackQueryHandler(graph_period_callback, pattern='^graph_'))
 
     # Запустить бота
     logger.info("✅ Бот запущен и готов к работе!")
