@@ -15,31 +15,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Convert repository owner to lowercase
-        id: lowercase
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            ghcr.io/${{ steps.lowercase.outputs.owner }}/deficit-bot:latest
-            ghcr.io/${{ steps.lowercase.outputs.owner }}/deficit-bot:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -47,51 +22,52 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-            cd /root/deficit || mkdir -p /root/deficit && cd /root/deficit
+            echo "🚀 Starting deployment..."
+
+            # Создать директорию проекта
+            mkdir -p /root/deficit
+            cd /root/deficit
+
+            # Клонировать или обновить репозиторий
+            if [ -d ".git" ]; then
+              echo "📥 Pulling latest changes..."
+              git pull origin master
+            else
+              echo "📦 Cloning repository..."
+              git clone https://github.com/${{ github.repository }}.git .
+            fi
 
             # Создать .env если не существует
             if [ ! -f .env ]; then
+              echo "📝 Creating .env file..."
               echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
               echo "OWNER_USER_ID=${{ secrets.OWNER_USER_ID }}" >> .env
             fi
 
-            # Создать docker-compose.yml если не существует
-            REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-            if [ ! -f docker-compose.yml ]; then
-              cat > docker-compose.yml << EOF
-            version: '3.8'
-            services:
-              bot:
-                image: ghcr.io/${REPO_OWNER_LOWER}/deficit-bot:latest
-                container_name: deficit-bot
-                restart: unless-stopped
-                env_file:
-                  - .env
-                volumes:
-                  - ./data:/app/data
-                logging:
-                  driver: "json-file"
-                  options:
-                    max-size: "10m"
-                    max-file: "3"
-            EOF
-            fi
-
-            # Логин в GitHub Container Registry
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            # Pull latest образ
-            docker pull ghcr.io/${REPO_OWNER_LOWER}/deficit-bot:latest
+            # Создать директорию для данных
+            mkdir -p data
 
             # Остановить старый контейнер
+            echo "🛑 Stopping old container..."
             docker-compose down || true
 
+            # Собрать новый образ
+            echo "🔨 Building Docker image..."
+            docker-compose build
+
             # Запустить новый контейнер
+            echo "✅ Starting new container..."
             docker-compose up -d
 
             # Очистить старые образы
+            echo "🧹 Cleaning up..."
             docker image prune -af --filter "until=24h"
 
             # Показать статус
+            echo "📊 Status:"
             docker-compose ps
-            docker-compose logs --tail=50 bot
+            echo ""
+            echo "📝 Recent logs:"
+            docker-compose logs --tail=20 bot
+
+            echo "🎉 Deployment complete!"
