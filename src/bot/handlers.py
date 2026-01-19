@@ -23,17 +23,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(welcome_message)
 
 
-async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handler для команды /add.
-    Начинает conversation для ввода данных.
-    """
-    # TODO: Будет реализовано позже через ConversationHandler
-    await update.message.reply_text(
-        "⚠️ Функция /add будет добавлена в следующих фичах."
-    )
-
-
 async def graph(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handler для команды /graph.

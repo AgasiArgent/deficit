@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 from telegram.ext import Application, CommandHandler
 
 from database.models import init_db
-from bot.handlers import start, add, graph, delete
+from bot.handlers import start, graph, delete
+from bot.conversations import add_conversation_handler
 
 # Загрузить переменные окружения
 load_dotenv()
@@ -44,7 +45,7 @@ def main():
 
     # Добавить command handlers
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("add", add))
+    application.add_handler(add_conversation_handler)  # Conversation для /add
     application.add_handler(CommandHandler("graph", graph))
     application.add_handler(CommandHandler("delete", delete))
 

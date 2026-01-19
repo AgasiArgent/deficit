@@ -77,10 +77,10 @@
       "name": "Команда /add инициация",
       "description": "Создать handler для /add, который запускает conversation",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 8,
@@ -88,10 +88,10 @@
       "name": "Conversation: ввод веса",
       "description": "Conversation handler спрашивает 'Введи вес (кг):' и сохраняет ответ",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 9,
@@ -99,10 +99,10 @@
       "name": "Валидация веса",
       "description": "Проверка что вес - положительное число, иначе повторный запрос",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 10,
@@ -110,10 +110,10 @@
       "name": "Conversation: ввод талии",
       "description": "Спросить 'Введи объем талии (см):' и сохранить ответ",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 11,
@@ -121,10 +121,10 @@
       "name": "Валидация талии",
       "description": "Проверка что талия - положительное число",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 12,
@@ -132,10 +132,10 @@
       "name": "Conversation: ввод шеи",
       "description": "Спросить 'Введи объем шеи (см):' и сохранить ответ",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 13,
@@ -143,10 +143,10 @@
       "name": "Валидация шеи",
       "description": "Проверка что шея - положительное число",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 14,
@@ -154,10 +154,10 @@
       "name": "Conversation: ввод калорий",
       "description": "Спросить 'Введи калории за вчера:' и сохранить ответ",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 15,
@@ -165,10 +165,10 @@
       "name": "Валидация калорий",
       "description": "Проверка что калории - положительное целое число",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 16,
@@ -176,10 +176,10 @@
       "name": "Выбор даты",
       "description": "Показать inline кнопки: [Сегодня] [Вчера] [Позавчера]",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 17,
@@ -187,10 +187,10 @@
       "name": "Сохранение в БД",
       "description": "После выбора даты сохранить запись в БД (с обработкой дубликата по дате)",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 18,
@@ -198,10 +198,10 @@
       "name": "Подтверждение сохранения",
       "description": "Отправить '✅ Данные сохранены: [дата] - [вес]кг, [талия]см, [шея]см, [калории]ккал'",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:07:34.977226"
     },
     {
       "id": 19,
