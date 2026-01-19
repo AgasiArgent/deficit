@@ -275,10 +275,10 @@
       "name": "Команда /delete",
       "description": "Получить последние 5 записей из БД и показать как inline кнопки",
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:10:22.944055"
     },
     {
       "id": 26,
@@ -286,10 +286,10 @@
       "name": "Callback удаления",
       "description": "Обработать callback_query для удаления выбранной записи из БД",
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:10:22.944055"
     },
     {
       "id": 27,
@@ -297,10 +297,10 @@
       "name": "Подтверждение удаления",
       "description": "Отправить '🗑️ Запись за [дата] удалена'",
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:10:22.944055"
     },
     {
       "id": 28,

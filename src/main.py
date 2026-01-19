@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 
 from database.models import init_db
-from bot.handlers import start, graph, delete, graph_period_callback
+from bot.handlers import start, graph, delete, graph_period_callback, delete_callback
 from bot.conversations import add_conversation_handler
 
 # Загрузить переменные окружения
@@ -51,6 +51,7 @@ def main():
 
     # Добавить callback handlers
     application.add_handler(CallbackQueryHandler(graph_period_callback, pattern='^graph_'))
+    application.add_handler(CallbackQueryHandler(delete_callback, pattern='^delete_'))
 
     # Запустить бота
     logger.info("✅ Бот запущен и готов к работе!")

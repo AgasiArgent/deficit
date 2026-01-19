@@ -5,7 +5,12 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from database.models import SessionLocal
-from database.queries import get_measurements_by_period, get_all_measurements
+from database.queries import (
+    get_measurements_by_period,
+    get_all_measurements,
+    get_last_measurements,
+    delete_measurement
+)
 from visualization.charts import generate_progress_chart, format_metrics_message
 
 
@@ -159,9 +164,92 @@ async def graph_period_callback(update: Update, context: ContextTypes.DEFAULT_TY
 async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handler для команды /delete.
-    Показывает последние записи для удаления.
+    Показывает последние 5 записей для удаления.
     """
-    # TODO: Будет реализовано позже
-    await update.message.reply_text(
-        "⚠️ Функция /delete будет добавлена в следующих фичах."
-    )
+    user_id = update.effective_user.id
+
+    db = SessionLocal()
+    try:
+        # Получить последние 5 записей
+        measurements = get_last_measurements(db, user_id, limit=5)
+
+        if not measurements:
+            await update.message.reply_text(
+                "📊 Нет записей для удаления.\n\n"
+                "Добавь первую запись с помощью /add"
+            )
+            return
+
+        # Создать кнопки для каждой записи
+        keyboard = []
+        for m in measurements:
+            date_str = m.date.strftime("%d.%m.%Y")
+            button_text = f"{date_str} - {m.weight}кг, {m.waist}см, {m.neck}см"
+            keyboard.append([
+                InlineKeyboardButton(button_text, callback_data=f"delete_{m.id}")
+            ])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(
+            "🗑️ Выбери запись для удаления:",
+            reply_markup=reply_markup
+        )
+
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ Ошибка: {str(e)}"
+        )
+
+    finally:
+        db.close()
+
+
+async def delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Callback handler для удаления записи.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    # Получить ID записи из callback_data
+    try:
+        measurement_id = int(query.data.split('_')[1])
+    except (IndexError, ValueError):
+        await query.message.reply_text("❌ Ошибка: некорректный ID записи.")
+        return
+
+    db = SessionLocal()
+    try:
+        # Получить запись для показа информации
+        from database.models import Measurement
+        measurement = db.query(Measurement).filter(Measurement.id == measurement_id).first()
+
+        if not measurement:
+            await query.message.reply_text("❌ Запись не найдена.")
+            return
+
+        date_str = measurement.date.strftime("%d.%m.%Y")
+
+        # Удалить запись
+        success = delete_measurement(db, measurement_id)
+
+        if success:
+            await query.message.reply_text(
+                f"🗑️ Запись за {date_str} удалена.\n\n"
+                f"Было:\n"
+                f"• Вес: {measurement.weight} кг\n"
+                f"• Талия: {measurement.waist} см\n"
+                f"• Шея: {measurement.neck} см\n"
+                f"• Калории: {measurement.calories} ккал"
+            )
+        else:
+            await query.message.reply_text("❌ Не удалось удалить запись.")
+
+    except Exception as e:
+        await query.message.reply_text(
+            f"❌ Ошибка при удалении: {str(e)}"
+        )
+
+    finally:
+        db.close()
