@@ -11,6 +11,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 from database.models import init_db
 from bot.handlers import start, graph, delete, graph_period_callback, delete_callback
 from bot.conversations import add_conversation_handler
+from bot.scheduler import setup_scheduler
 
 # Загрузить переменные окружения
 load_dotenv()
@@ -37,7 +38,17 @@ def main():
         logger.error("❌ TELEGRAM_BOT_TOKEN не найден в .env файле!")
         logger.error("Создай .env файл с содержимым:")
         logger.error("TELEGRAM_BOT_TOKEN=your_token_here")
+        logger.error("OWNER_USER_ID=your_telegram_user_id")
         return
+
+    # Получить user ID владельца (опционально для напоминаний)
+    owner_user_id_str = os.getenv('OWNER_USER_ID')
+    owner_user_id = None
+    if owner_user_id_str:
+        try:
+            owner_user_id = int(owner_user_id_str)
+        except ValueError:
+            logger.warning("⚠️  OWNER_USER_ID некорректный, напоминания отключены")
 
     # Создать приложение
     logger.info("Инициализация бота...")
@@ -52,6 +63,14 @@ def main():
     # Добавить callback handlers
     application.add_handler(CallbackQueryHandler(graph_period_callback, pattern='^graph_'))
     application.add_handler(CallbackQueryHandler(delete_callback, pattern='^delete_'))
+
+    # Настроить напоминания (если указан OWNER_USER_ID)
+    if owner_user_id:
+        scheduler = setup_scheduler(application.bot, owner_user_id)
+        scheduler.start()
+        logger.info("✅ Напоминания настроены (9:00 МСК ежедневно)")
+    else:
+        logger.warning("⚠️  Напоминания отключены (не указан OWNER_USER_ID в .env)")
 
     # Запустить бота
     logger.info("✅ Бот запущен и готов к работе!")

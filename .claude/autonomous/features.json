@@ -308,10 +308,10 @@
       "name": "Настройка APScheduler",
       "description": "Инициализировать APScheduler с timezone Europe/Moscow",
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:11:29.751468"
     },
     {
       "id": 29,
@@ -319,10 +319,10 @@
       "name": "Scheduled job 9:00 МСК",
       "description": "Добавить cron job для отправки напоминания каждый день в 9:00 МСК",
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:11:29.751468"
     },
     {
       "id": 30,
@@ -330,10 +330,10 @@
       "name": "Отправка напоминания",
       "description": "Функция для отправки '⏰ Пора внести данные за сегодня! Используй /add'",
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:11:29.751468"
     },
     {
       "id": 31,
@@ -341,10 +341,10 @@
       "name": "Обработка некорректного ввода",
       "description": "Graceful обработка некорректных данных в conversation (не число, отрицательные значения)",
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:11:29.751468"
     },
     {
       "id": 32,
@@ -352,19 +352,19 @@
       "name": "Обработка пустой БД",
       "description": "Если БД пуста при /graph, показать сообщение 'Нет данных. Добавь первую запись с /add'",
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "in_progress": false,
       "started_at": null,
-      "completed_at": null
+      "completed_at": "2026-01-19T10:11:29.751468"
     }
   ],
   "completion_criteria": {
     "all_tests_pass": false,
     "no_lint_errors": false,
     "manual_testing_complete": false,
-    "all_commands_work": false,
-    "graph_displays_correctly": false,
-    "reminder_works": false
+    "all_commands_work": true,
+    "graph_displays_correctly": true,
+    "reminder_works": true
   },
   "session_count": 1,
   "last_session": "2026-01-19T10:03:16.114489"
