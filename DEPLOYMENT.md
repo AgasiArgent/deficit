@@ -31,9 +31,22 @@ git push -u origin master
 |-------------|-------|----------|
 | `VPS_HOST` | `217.26.25.207` | IP адрес VPS |
 | `VPS_USERNAME` | `root` | Username для SSH |
-| `VPS_PASSWORD` | `V5Z!s%PjGVeD` | Password для SSH |
+| `VPS_SSH_KEY` | `[содержимое приватного ключа]` | SSH приватный ключ (см. ниже) |
 | `TELEGRAM_BOT_TOKEN` | `8586048540:AAEGaQ_daca976d1n-r0e2RqE9nRX4fiNIE` | Токен бота |
 | `OWNER_USER_ID` | `43379140` | Твой Telegram User ID |
+
+**Получить SSH приватный ключ:**
+
+```bash
+# На твоем Mac
+cat ~/.ssh/id_ed25519_beget_vps
+```
+
+Скопируй весь вывод (включая `-----BEGIN OPENSSH PRIVATE KEY-----` и `-----END OPENSSH PRIVATE KEY-----`) и добавь как secret `VPS_SSH_KEY`.
+
+**⚠️ После настройки SSH ключа:**
+- Удали старый secret `VPS_PASSWORD` (он больше не нужен)
+- SSH ключ безопаснее пароля
 
 ### 3. Настроить GitHub Container Registry
 
