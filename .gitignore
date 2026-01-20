@@ -51,3 +51,7 @@ bot_token.txt
 
 # Logs
 *.log
+
+# Deployment keys (sensitive)
+deployment-keys.txt
+**/deployment-keys.txt

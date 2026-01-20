@@ -26,5 +26,13 @@ RUN mkdir -p /app/data
 # Установить переменную окружения для Python
 ENV PYTHONUNBUFFERED=1
 
-# Запустить бота
-CMD ["python", "src/main.py"]
+# Создать entrypoint script для запуска миграций и бота
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "🔄 Running database migrations..."\n\
+python migrate.py\n\
+echo "🚀 Starting bot..."\n\
+exec python src/main.py' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+# Запустить через entrypoint
+ENTRYPOINT ["/entrypoint.sh"]

@@ -54,15 +54,23 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
     """
-    Инициализация базы данных - создание всех таблиц.
+    Инициализация базы данных - проверка подключения.
+
+    Note: Таблицы создаются через Alembic migrations (см. migrate.py).
+    Эта функция только проверяет что база доступна.
     """
     # Создать директорию для базы данных если не существует
     db_dir = os.path.dirname(DB_PATH)
     if db_dir and not os.path.exists(db_dir):
         os.makedirs(db_dir, exist_ok=True)
 
-    Base.metadata.create_all(bind=engine)
-    print("✅ Database initialized")
+    # Проверить подключение к базе
+    try:
+        engine.connect()
+        print("✅ Database connection successful")
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        raise
 
 
 def get_db():
