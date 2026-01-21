@@ -38,6 +38,12 @@ def upgrade() -> None:
     except Exception:
         pass  # Index doesn't exist, that's ok
 
+    # Clean up any leftover temp table from previous failed migration
+    try:
+        op.drop_table('measurements_new')
+    except Exception:
+        pass  # Table doesn't exist, that's ok
+
     # 2. Create new table with nullable weight and calories
     op.create_table(
         'measurements_new',
