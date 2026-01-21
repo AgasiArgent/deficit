@@ -6,7 +6,8 @@ Telegram-бот для отслеживания показателей тела 
 import os
 import logging
 from dotenv import load_dotenv
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
+from telegram import BotCommand
 
 from database.models import init_db
 from bot.handlers import (
@@ -14,7 +15,8 @@ from bot.handlers import (
     graph_period_callback, delete_callback,
     set_start_date_command, set_start_date_callback
 )
-from bot.conversations import add_conversation_handler
+from bot.conversations import add_conversation_handler, add_start
+from bot.keyboard import button_graph, button_start_date, button_delete
 from bot.scheduler import setup_scheduler
 
 # Загрузить переменные окружения
@@ -65,6 +67,12 @@ def main():
     application.add_handler(CommandHandler("graph", graph))
     application.add_handler(CommandHandler("delete", delete))
 
+    # Добавить handlers для кнопок клавиатуры
+    application.add_handler(MessageHandler(filters.Regex("^📊 Внести данные$"), add_start))
+    application.add_handler(MessageHandler(filters.Regex("^📈 График$"), button_graph))
+    application.add_handler(MessageHandler(filters.Regex("^📅 Дата старта$"), button_start_date))
+    application.add_handler(MessageHandler(filters.Regex("^🗑️ Удалить запись$"), button_delete))
+
     # Добавить callback handlers
     application.add_handler(CallbackQueryHandler(graph_period_callback, pattern='^graph_'))
     application.add_handler(CallbackQueryHandler(delete_callback, pattern='^delete_'))
@@ -77,6 +85,13 @@ def main():
         logger.info("✅ Напоминания настроены (9:00 МСК ежедневно)")
     else:
         logger.warning("⚠️  Напоминания отключены (не указан OWNER_USER_ID в .env)")
+
+    # Убрать bot menu button (чтобы не показывать список команд)
+    async def post_init(app: Application):
+        await app.bot.delete_my_commands()
+        logger.info("✅ Bot menu отключен")
+
+    application.post_init = post_init
 
     # Запустить бота
     logger.info("✅ Бот запущен и готов к работе!")

@@ -23,13 +23,40 @@ WEIGHT, WAIST, NECK, CALORIES, DATE_SELECTION = range(5)
 async def add_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Начало conversation для ввода данных.
-    Спрашивает вес.
+    Сначала спрашивает дату (или автоматически выбирает сегодня если из напоминания).
     """
+    # Проверить есть ли параметр auto_date (из напоминания)
+    if context.args and context.args[0] == 'auto':
+        # Автоматически выбираем сегодня
+        context.user_data['selected_date'] = date.today()
+        await update.message.reply_text(
+            f"📊 Вношу данные за сегодня ({date.today().strftime('%d.%m.%Y')})\n\n"
+            "Введи вес (кг):"
+        )
+        return WEIGHT
+
+    # Иначе спрашиваем дату
+    today = date.today()
+    keyboard = []
+
+    for i in range(7):
+        target_date = today - timedelta(days=i)
+        if i == 0:
+            label = f"Сегодня ({target_date.strftime('%d.%m')})"
+        elif i == 1:
+            label = f"Вчера ({target_date.strftime('%d.%m')})"
+        else:
+            label = target_date.strftime('%d.%m.%Y')
+
+        keyboard.append([InlineKeyboardButton(label, callback_data=f"selectdate_{i}")])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     await update.message.reply_text(
-        "📊 Начинаем ввод данных.\n\n"
-        "Введи вес (кг):"
+        "📅 За какой день вносишь данные?",
+        reply_markup=reply_markup
     )
-    return WEIGHT
+    return DATE_SELECTION
 
 
 async def weight_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -153,11 +180,39 @@ async def neck_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return NECK
 
 
+async def date_selection_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработка выбора даты в начале conversation.
+    После выбора даты переходим к вводу веса.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    # Определить дату из callback_data (формат: selectdate_N где N - количество дней назад)
+    try:
+        days_ago = int(query.data.split('_')[1])
+        selected_date = date.today() - timedelta(days=days_ago)
+
+        # Сохраняем дату в context
+        context.user_data['selected_date'] = selected_date
+
+        date_str = selected_date.strftime('%d.%m.%Y')
+        await query.message.reply_text(
+            f"📅 Вношу данные за {date_str}\n\n"
+            "Введи вес (кг):"
+        )
+        return WEIGHT
+
+    except (ValueError, IndexError):
+        await query.message.reply_text("⚠️ Ошибка выбора даты. Попробуй /add снова.")
+        return ConversationHandler.END
+
+
 async def calories_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Обработка ввода калорий.
     Валидация: положительное целое число.
-    Показывает кнопки выбора даты.
+    Сохраняет все данные в БД.
     """
     text = update.message.text.strip()
 
@@ -173,39 +228,62 @@ async def calories_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Сохраняем в context
         context.user_data['calories'] = calories
 
-        # Создаем кнопки выбора даты (последние 7 дней)
-        today = date.today()
-        keyboard = []
+        # Получить все данные
+        user_id = update.effective_user.id
+        selected_date = context.user_data['selected_date']
+        weight = context.user_data['weight']
+        waist = context.user_data.get('waist')
+        neck = context.user_data.get('neck')
 
-        for i in range(7):
-            target_date = today - timedelta(days=i)
-            if i == 0:
-                label = f"Сегодня ({target_date.strftime('%d.%m')})"
-            elif i == 1:
-                label = f"Вчера ({target_date.strftime('%d.%m')})"
-            else:
-                label = target_date.strftime('%d.%m.%Y')
+        # Сохранить в БД
+        db = SessionLocal()
+        try:
+            measurement = create_measurement(
+                db=db,
+                user_id=user_id,
+                measurement_date=selected_date,
+                weight=weight,
+                calories=calories,
+                waist=waist,
+                neck=neck
+            )
 
-            keyboard.append([InlineKeyboardButton(label, callback_data=f"date_{i}")])
+            date_str = selected_date.strftime("%d.%m.%Y")
+            waist_str = f"{waist} см" if waist else "пропущено"
+            neck_str = f"{neck} см" if neck else "пропущено"
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
+            success_message = (
+                f"✅ Данные сохранены!\n\n"
+                f"📅 Дата: {date_str}\n"
+                f"• Вес: {weight} кг\n"
+                f"• Талия: {waist_str}\n"
+                f"• Шея: {neck_str}\n"
+                f"• Калории: {calories} ккал\n\n"
+                f"Используй кнопки ниже для следующих действий."
+            )
+            await update.message.reply_text(success_message)
 
-        # Формируем сводку с учетом пропущенных полей
-        waist_str = f"{context.user_data['waist']} см" if context.user_data.get('waist') else "пропущено"
-        neck_str = f"{context.user_data['neck']} см" if context.user_data.get('neck') else "пропущено"
+        except IntegrityError:
+            db.rollback()
+            date_str = selected_date.strftime("%d.%m.%Y")
+            await update.message.reply_text(
+                f"⚠️ Запись за {date_str} уже существует!\n"
+                f"Используй кнопку 🗑️ Удалить запись чтобы удалить старую."
+            )
 
-        summary = (
-            f"✅ Калории: {calories} ккал\n\n"
-            f"📋 Итого:\n"
-            f"• Вес: {context.user_data['weight']} кг\n"
-            f"• Талия: {waist_str}\n"
-            f"• Шея: {neck_str}\n"
-            f"• Калории: {calories} ккал\n\n"
-            f"За какой день записать?"
-        )
+        except Exception as e:
+            db.rollback()
+            await update.message.reply_text(
+                f"❌ Ошибка при сохранении: {str(e)}\n"
+                f"Попробуй снова с кнопки 📊 Внести данные"
+            )
 
-        await update.message.reply_text(summary, reply_markup=reply_markup)
-        return DATE_SELECTION
+        finally:
+            db.close()
+            # Очистить user_data
+            context.user_data.clear()
+
+        return ConversationHandler.END
 
     except ValueError:
         await update.message.reply_text(
@@ -215,77 +293,6 @@ async def calories_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return CALORIES
 
 
-async def date_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Обработка выбора даты и сохранение в БД.
-    """
-    query = update.callback_query
-    await query.answer()
-
-    # Определить дату из callback_data (формат: date_N где N - количество дней назад)
-    try:
-        days_ago = int(query.data.split('_')[1])
-        selected_date = date.today() - timedelta(days=days_ago)
-    except (ValueError, IndexError):
-        await query.message.reply_text("⚠️ Ошибка выбора даты. Попробуй /add снова.")
-        return ConversationHandler.END
-
-    # Получить данные из context
-    user_id = update.effective_user.id
-    weight = context.user_data['weight']
-    waist = context.user_data.get('waist')  # Может быть None
-    neck = context.user_data.get('neck')    # Может быть None
-    calories = context.user_data['calories']
-
-    # Сохранить в БД
-    db = SessionLocal()
-    try:
-        measurement = create_measurement(
-            db=db,
-            user_id=user_id,
-            measurement_date=selected_date,
-            weight=weight,
-            calories=calories,
-            waist=waist,
-            neck=neck
-        )
-
-        date_str = selected_date.strftime("%d.%m.%Y")
-        waist_str = f"{waist} см" if waist else "пропущено"
-        neck_str = f"{neck} см" if neck else "пропущено"
-
-        success_message = (
-            f"✅ Данные сохранены!\n\n"
-            f"📅 Дата: {date_str}\n"
-            f"• Вес: {weight} кг\n"
-            f"• Талия: {waist_str}\n"
-            f"• Шея: {neck_str}\n"
-            f"• Калории: {calories} ккал\n\n"
-            f"Используй /graph чтобы посмотреть график прогресса."
-        )
-        await query.message.reply_text(success_message)
-
-    except IntegrityError:
-        db.rollback()
-        date_str = selected_date.strftime("%d.%m.%Y")
-        await query.message.reply_text(
-            f"⚠️ Запись за {date_str} уже существует!\n"
-            f"Используй /delete чтобы удалить старую запись."
-        )
-
-    except Exception as e:
-        db.rollback()
-        await query.message.reply_text(
-            f"❌ Ошибка при сохранении: {str(e)}\n"
-            f"Попробуй снова с /add"
-        )
-
-    finally:
-        db.close()
-        # Очистить user_data
-        context.user_data.clear()
-
-    return ConversationHandler.END
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -304,11 +311,11 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 add_conversation_handler = ConversationHandler(
     entry_points=[CommandHandler('add', add_start)],
     states={
+        DATE_SELECTION: [CallbackQueryHandler(date_selection_start, pattern='^selectdate_')],
         WEIGHT: [MessageHandler(filters.TEXT & ~filters.COMMAND, weight_input)],
         WAIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, waist_input)],
         NECK: [MessageHandler(filters.TEXT & ~filters.COMMAND, neck_input)],
-        CALORIES: [MessageHandler(filters.TEXT & ~filters.COMMAND, calories_input)],
-        DATE_SELECTION: [CallbackQueryHandler(date_selection, pattern='^date_')]
+        CALORIES: [MessageHandler(filters.TEXT & ~filters.COMMAND, calories_input)]
     },
     fallbacks=[CommandHandler('cancel', cancel)],
 )
