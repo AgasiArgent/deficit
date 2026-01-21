@@ -9,6 +9,27 @@ from sqlalchemy.orm import sessionmaker
 Base = declarative_base()
 
 
+class UserProfile(Base):
+    """
+    Модель для хранения профиля и настроек пользователя.
+
+    Поля:
+    - user_id: Telegram user ID (первичный ключ)
+    - start_date: Дата начала трекинга дефицита калорий
+    - created_at: Timestamp создания профиля
+    - updated_at: Timestamp последнего обновления
+    """
+    __tablename__ = 'user_profiles'
+
+    user_id = Column(BigInteger, primary_key=True)
+    start_date = Column(Date, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<UserProfile(user_id={self.user_id}, start_date={self.start_date})>"
+
+
 class Measurement(Base):
     """
     Модель для хранения ежедневных замеров пользователя.
@@ -18,8 +39,8 @@ class Measurement(Base):
     - user_id: Telegram user ID
     - date: Дата замера
     - weight: Вес в кг
-    - waist: Объем талии в см
-    - neck: Объем шеи в см
+    - waist: Объем талии в см (опционально, измеряется раз в неделю)
+    - neck: Объем шеи в см (опционально, измеряется раз в неделю)
     - calories: Калории за день
     - created_at: Timestamp создания записи
     """
@@ -29,8 +50,8 @@ class Measurement(Base):
     user_id = Column(BigInteger, nullable=False, index=True)
     date = Column(Date, nullable=False, index=True)
     weight = Column(Float, nullable=False)
-    waist = Column(Float, nullable=False)
-    neck = Column(Float, nullable=False)
+    waist = Column(Float, nullable=True)  # Теперь опционально
+    neck = Column(Float, nullable=True)   # Теперь опционально
     calories = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

@@ -6,7 +6,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from .models import Measurement
+from .models import Measurement, UserProfile
 
 
 def create_measurement(
@@ -14,9 +14,9 @@ def create_measurement(
     user_id: int,
     measurement_date: date,
     weight: float,
-    waist: float,
-    neck: float,
-    calories: int
+    calories: int,
+    waist: Optional[float] = None,
+    neck: Optional[float] = None
 ) -> Measurement:
     """
     Создать новую запись замера.
@@ -26,9 +26,9 @@ def create_measurement(
         user_id: Telegram user ID
         measurement_date: Дата замера
         weight: Вес в кг
-        waist: Объем талии в см
-        neck: Объем шеи в см
         calories: Калории за день
+        waist: Объем талии в см (опционально)
+        neck: Объем шеи в см (опционально)
 
     Returns:
         Созданная запись Measurement
@@ -201,3 +201,59 @@ def update_measurement(
     db.commit()
     db.refresh(measurement)
     return measurement
+
+
+# User Profile operations
+
+def get_or_create_user_profile(db: Session, user_id: int) -> UserProfile:
+    """
+    Получить или создать профиль пользователя.
+
+    Args:
+        db: Сессия БД
+        user_id: Telegram user ID
+
+    Returns:
+        UserProfile
+    """
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    if not profile:
+        profile = UserProfile(user_id=user_id)
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    return profile
+
+
+def set_start_date(db: Session, user_id: int, start_date: date) -> UserProfile:
+    """
+    Установить дату начала трекинга для пользователя.
+
+    Args:
+        db: Сессия БД
+        user_id: Telegram user ID
+        start_date: Дата начала трекинга
+
+    Returns:
+        Обновленный UserProfile
+    """
+    profile = get_or_create_user_profile(db, user_id)
+    profile.start_date = start_date
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+
+def get_user_start_date(db: Session, user_id: int) -> Optional[date]:
+    """
+    Получить дату начала трекинга пользователя.
+
+    Args:
+        db: Сессия БД
+        user_id: Telegram user ID
+
+    Returns:
+        Дата начала или None если не установлена
+    """
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    return profile.start_date if profile else None

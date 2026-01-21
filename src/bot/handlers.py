@@ -1,6 +1,7 @@
 """
 Handlers для команд Telegram бота.
 """
+from datetime import datetime, date, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
@@ -9,7 +10,9 @@ from database.queries import (
     get_measurements_by_period,
     get_all_measurements,
     get_last_measurements,
-    delete_measurement
+    delete_measurement,
+    get_user_start_date,
+    set_start_date
 )
 from visualization.charts import generate_progress_chart, format_metrics_message
 
@@ -23,8 +26,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👋 Привет! Я бот для трекинга показателей тела и калорий.\n\n"
         "📊 Доступные команды:\n\n"
         "/add - Внести данные (вес, талия, шея, калории)\n"
+        "/set_start - Установить дату начала трекинга\n"
         "/graph - Показать график прогресса\n"
         "/delete - Удалить запись\n\n"
+        "💡 Подсказки:\n"
+        "• Талию и шею можно пропустить (введи 0, - или skip)\n"
+        "• Можно вносить данные за последние 7 дней\n\n"
         "⏰ Каждый день в 9:00 МСК я буду напоминать тебе внести данные.\n\n"
         "Начни с команды /add чтобы внести первые показатели!"
     )
@@ -253,3 +260,129 @@ async def delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     finally:
         db.close()
+
+
+async def set_start_date_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handler для команды /set_start.
+    Устанавливает дату начала трекинга дефицита калорий.
+    """
+    user_id = update.effective_user.id
+
+    # Проверить есть ли аргумент (дата)
+    if context.args:
+        date_str = context.args[0]
+        try:
+            # Парсинг даты в формате DD.MM.YYYY
+            start_date = datetime.strptime(date_str, "%d.%m.%Y").date()
+
+            # Проверка что дата не в будущем
+            if start_date > date.today():
+                await update.message.reply_text(
+                    "⚠️ Дата не может быть в будущем.\n"
+                    "Попробуй снова, например: /set_start 19.01.2026"
+                )
+                return
+
+            # Сохранить дату старта
+            db = SessionLocal()
+            try:
+                set_start_date(db, user_id, start_date)
+                date_display = start_date.strftime("%d.%m.%Y")
+                days_ago = (date.today() - start_date).days
+
+                await update.message.reply_text(
+                    f"✅ Дата начала трекинга установлена: {date_display}\n\n"
+                    f"📊 Прошло дней: {days_ago}\n\n"
+                    f"Теперь можешь вносить данные за этот период с помощью /add"
+                )
+            finally:
+                db.close()
+
+        except ValueError:
+            await update.message.reply_text(
+                "⚠️ Неправильный формат даты.\n\n"
+                "Используй формат: /set_start ДД.ММ.ГГГГ\n"
+                "Например: /set_start 19.01.2026"
+            )
+    else:
+        # Показать текущую дату или предложить установить
+        db = SessionLocal()
+        try:
+            current_start = get_user_start_date(db, user_id)
+
+            if current_start:
+                date_display = current_start.strftime("%d.%m.%Y")
+                days_ago = (date.today() - current_start).days
+
+                # Создать кнопки для изменения
+                keyboard = []
+                for i in range(1, 8):  # Последние 7 дней
+                    suggested_date = date.today() - timedelta(days=i)
+                    label = suggested_date.strftime('%d.%m.%Y')
+                    keyboard.append([InlineKeyboardButton(
+                        label,
+                        callback_data=f"setstart_{suggested_date.strftime('%Y%m%d')}"
+                    )])
+
+                reply_markup = InlineKeyboardMarkup(keyboard)
+
+                await update.message.reply_text(
+                    f"📅 Текущая дата начала: {date_display}\n"
+                    f"📊 Прошло дней: {days_ago}\n\n"
+                    f"Чтобы изменить, выбери дату или используй:\n"
+                    f"/set_start ДД.ММ.ГГГГ",
+                    reply_markup=reply_markup
+                )
+            else:
+                # Предложить установить дату
+                keyboard = []
+                for i in range(1, 8):  # Последние 7 дней
+                    suggested_date = date.today() - timedelta(days=i)
+                    label = suggested_date.strftime('%d.%m.%Y')
+                    keyboard.append([InlineKeyboardButton(
+                        label,
+                        callback_data=f"setstart_{suggested_date.strftime('%Y%m%d')}"
+                    )])
+
+                reply_markup = InlineKeyboardMarkup(keyboard)
+
+                await update.message.reply_text(
+                    "📅 Дата начала трекинга не установлена.\n\n"
+                    "Выбери дату когда начал дефицит калорий,\n"
+                    "или используй: /set_start ДД.ММ.ГГГГ",
+                    reply_markup=reply_markup
+                )
+        finally:
+            db.close()
+
+
+async def set_start_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Callback handler для установки даты старта через кнопку.
+    """
+    query = update.callback_query
+    await query.answer()
+    user_id = update.effective_user.id
+
+    # Парсинг даты из callback_data (формат: setstart_YYYYMMDD)
+    try:
+        date_str = query.data.split('_')[1]
+        start_date = datetime.strptime(date_str, "%Y%m%d").date()
+
+        db = SessionLocal()
+        try:
+            set_start_date(db, user_id, start_date)
+            date_display = start_date.strftime("%d.%m.%Y")
+            days_ago = (date.today() - start_date).days
+
+            await query.message.reply_text(
+                f"✅ Дата начала трекинга установлена: {date_display}\n\n"
+                f"📊 Прошло дней: {days_ago}\n\n"
+                f"Теперь можешь вносить данные за этот период с помощью /add"
+            )
+        finally:
+            db.close()
+
+    except (ValueError, IndexError):
+        await query.message.reply_text("❌ Ошибка при установке даты.")

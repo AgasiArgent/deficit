@@ -68,15 +68,25 @@ async def weight_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def waist_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Обработка ввода объема талии.
-    Валидация: положительное число.
+    Валидация: положительное число или пропуск (0, -, skip).
     """
-    text = update.message.text.strip()
+    text = update.message.text.strip().lower()
+
+    # Проверка на пропуск
+    if text in ['0', '-', 'skip', 'пропустить']:
+        context.user_data['waist'] = None
+        await update.message.reply_text(
+            "⏭️ Талия: пропущено\n\n"
+            "Введи объем шеи (см) или пропусти (0, -, skip):"
+        )
+        return NECK
 
     try:
         waist = float(text)
         if waist <= 0:
             await update.message.reply_text(
                 "⚠️ Объем талии должен быть положительным числом.\n"
+                "Или введи 0, - или skip чтобы пропустить.\n"
                 "Попробуй снова:"
             )
             return WAIST
@@ -86,13 +96,14 @@ async def waist_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(
             f"✅ Талия: {waist} см\n\n"
-            "Введи объем шеи (см):"
+            "Введи объем шеи (см) или пропусти (0, -, skip):"
         )
         return NECK
 
     except ValueError:
         await update.message.reply_text(
             "⚠️ Некорректный ввод. Введи число (например, 85.0).\n"
+            "Или введи 0, - или skip чтобы пропустить.\n"
             "Попробуй снова:"
         )
         return WAIST
@@ -101,15 +112,25 @@ async def waist_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def neck_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Обработка ввода объема шеи.
-    Валидация: положительное число.
+    Валидация: положительное число или пропуск (0, -, skip).
     """
-    text = update.message.text.strip()
+    text = update.message.text.strip().lower()
+
+    # Проверка на пропуск
+    if text in ['0', '-', 'skip', 'пропустить']:
+        context.user_data['neck'] = None
+        await update.message.reply_text(
+            "⏭️ Шея: пропущено\n\n"
+            "Введи калории за вчера:"
+        )
+        return CALORIES
 
     try:
         neck = float(text)
         if neck <= 0:
             await update.message.reply_text(
                 "⚠️ Объем шеи должен быть положительным числом.\n"
+                "Или введи 0, - или skip чтобы пропустить.\n"
                 "Попробуй снова:"
             )
             return NECK
@@ -126,6 +147,7 @@ async def neck_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except ValueError:
         await update.message.reply_text(
             "⚠️ Некорректный ввод. Введи число (например, 38.5).\n"
+            "Или введи 0, - или skip чтобы пропустить.\n"
             "Попробуй снова:"
         )
         return NECK
@@ -151,24 +173,33 @@ async def calories_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Сохраняем в context
         context.user_data['calories'] = calories
 
-        # Создаем кнопки выбора даты
+        # Создаем кнопки выбора даты (последние 7 дней)
         today = date.today()
-        yesterday = today - timedelta(days=1)
-        day_before_yesterday = today - timedelta(days=2)
+        keyboard = []
 
-        keyboard = [
-            [InlineKeyboardButton("Сегодня", callback_data=f"date_today")],
-            [InlineKeyboardButton("Вчера", callback_data=f"date_yesterday")],
-            [InlineKeyboardButton("Позавчера", callback_data=f"date_day_before")]
-        ]
+        for i in range(7):
+            target_date = today - timedelta(days=i)
+            if i == 0:
+                label = f"Сегодня ({target_date.strftime('%d.%m')})"
+            elif i == 1:
+                label = f"Вчера ({target_date.strftime('%d.%m')})"
+            else:
+                label = target_date.strftime('%d.%m.%Y')
+
+            keyboard.append([InlineKeyboardButton(label, callback_data=f"date_{i}")])
+
         reply_markup = InlineKeyboardMarkup(keyboard)
+
+        # Формируем сводку с учетом пропущенных полей
+        waist_str = f"{context.user_data['waist']} см" if context.user_data.get('waist') else "пропущено"
+        neck_str = f"{context.user_data['neck']} см" if context.user_data.get('neck') else "пропущено"
 
         summary = (
             f"✅ Калории: {calories} ккал\n\n"
             f"📋 Итого:\n"
             f"• Вес: {context.user_data['weight']} кг\n"
-            f"• Талия: {context.user_data['waist']} см\n"
-            f"• Шея: {context.user_data['neck']} см\n"
+            f"• Талия: {waist_str}\n"
+            f"• Шея: {neck_str}\n"
             f"• Калории: {calories} ккал\n\n"
             f"За какой день записать?"
         )
@@ -191,24 +222,19 @@ async def date_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    # Определить дату
-    today = date.today()
-    date_map = {
-        'date_today': today,
-        'date_yesterday': today - timedelta(days=1),
-        'date_day_before': today - timedelta(days=2)
-    }
-
-    selected_date = date_map.get(query.data)
-    if not selected_date:
+    # Определить дату из callback_data (формат: date_N где N - количество дней назад)
+    try:
+        days_ago = int(query.data.split('_')[1])
+        selected_date = date.today() - timedelta(days=days_ago)
+    except (ValueError, IndexError):
         await query.message.reply_text("⚠️ Ошибка выбора даты. Попробуй /add снова.")
         return ConversationHandler.END
 
     # Получить данные из context
     user_id = update.effective_user.id
     weight = context.user_data['weight']
-    waist = context.user_data['waist']
-    neck = context.user_data['neck']
+    waist = context.user_data.get('waist')  # Может быть None
+    neck = context.user_data.get('neck')    # Может быть None
     calories = context.user_data['calories']
 
     # Сохранить в БД
@@ -219,18 +245,21 @@ async def date_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_id=user_id,
             measurement_date=selected_date,
             weight=weight,
+            calories=calories,
             waist=waist,
-            neck=neck,
-            calories=calories
+            neck=neck
         )
 
         date_str = selected_date.strftime("%d.%m.%Y")
+        waist_str = f"{waist} см" if waist else "пропущено"
+        neck_str = f"{neck} см" if neck else "пропущено"
+
         success_message = (
             f"✅ Данные сохранены!\n\n"
             f"📅 Дата: {date_str}\n"
             f"• Вес: {weight} кг\n"
-            f"• Талия: {waist} см\n"
-            f"• Шея: {neck} см\n"
+            f"• Талия: {waist_str}\n"
+            f"• Шея: {neck_str}\n"
             f"• Калории: {calories} ккал\n\n"
             f"Используй /graph чтобы посмотреть график прогресса."
         )

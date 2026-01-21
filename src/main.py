@@ -9,7 +9,11 @@ from dotenv import load_dotenv
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 
 from database.models import init_db
-from bot.handlers import start, graph, delete, graph_period_callback, delete_callback
+from bot.handlers import (
+    start, graph, delete,
+    graph_period_callback, delete_callback,
+    set_start_date_command, set_start_date_callback
+)
 from bot.conversations import add_conversation_handler
 from bot.scheduler import setup_scheduler
 
@@ -57,12 +61,14 @@ def main():
     # Добавить command handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(add_conversation_handler)  # Conversation для /add
+    application.add_handler(CommandHandler("set_start", set_start_date_command))
     application.add_handler(CommandHandler("graph", graph))
     application.add_handler(CommandHandler("delete", delete))
 
     # Добавить callback handlers
     application.add_handler(CallbackQueryHandler(graph_period_callback, pattern='^graph_'))
     application.add_handler(CallbackQueryHandler(delete_callback, pattern='^delete_'))
+    application.add_handler(CallbackQueryHandler(set_start_date_callback, pattern='^setstart_'))
 
     # Настроить напоминания (если указан OWNER_USER_ID)
     if owner_user_id:
