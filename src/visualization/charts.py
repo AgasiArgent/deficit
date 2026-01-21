@@ -30,25 +30,36 @@ def generate_progress_chart(
     if not measurements:
         return None, None
 
-    # Извлечь данные
+    # Извлечь данные (с фильтрацией None)
     dates = [m.date for m in measurements]
-    weights = [m.weight for m in measurements]
-    waists = [m.waist for m in measurements]
-    necks = [m.neck for m in measurements]
-    calories_list = [m.calories for m in measurements]
 
-    # Вычислить метрики прогресса
-    metrics = {
-        'weight_start': weights[0],
-        'weight_current': weights[-1],
-        'weight_diff': weights[-1] - weights[0],
-        'waist_start': waists[0],
-        'waist_current': waists[-1],
-        'waist_diff': waists[-1] - waists[0],
-        'neck_start': necks[0],
-        'neck_current': necks[-1],
-        'neck_diff': necks[-1] - necks[0],
-    }
+    # Для графика нужны параллельные списки (date, value), None заменяем на пропуски
+    weights = [m.weight if m.weight is not None else None for m in measurements]
+    waists = [m.waist if m.waist is not None else None for m in measurements]
+    necks = [m.neck if m.neck is not None else None for m in measurements]
+    calories_list = [m.calories if m.calories is not None else None for m in measurements]
+
+    # Для метрик берем только не-None значения
+    weights_filtered = [m.weight for m in measurements if m.weight is not None]
+    waists_filtered = [m.waist for m in measurements if m.waist is not None]
+    necks_filtered = [m.neck for m in measurements if m.neck is not None]
+
+    # Вычислить метрики прогресса (только если есть данные)
+    metrics = {}
+    if weights_filtered:
+        metrics['weight_start'] = weights_filtered[0]
+        metrics['weight_current'] = weights_filtered[-1]
+        metrics['weight_diff'] = weights_filtered[-1] - weights_filtered[0]
+
+    if waists_filtered:
+        metrics['waist_start'] = waists_filtered[0]
+        metrics['waist_current'] = waists_filtered[-1]
+        metrics['waist_diff'] = waists_filtered[-1] - waists_filtered[0]
+
+    if necks_filtered:
+        metrics['neck_start'] = necks_filtered[0]
+        metrics['neck_current'] = necks_filtered[-1]
+        metrics['neck_diff'] = necks_filtered[-1] - necks_filtered[0]
 
     # Создать фигуру
     fig, ax1 = plt.subplots(figsize=(12, 7))
@@ -77,8 +88,8 @@ def generate_progress_chart(
              marker='^', markersize=5, label='Шея (см)', alpha=0.8)
 
     # Калории на отдельной шкале (нормализуем для визуализации)
-    # Делим калории на 30 для приближения к масштабу см
-    calories_scaled = [c / 30 for c in calories_list]
+    # Делим калории на 30 для приближения к масштабу см (пропускаем None)
+    calories_scaled = [c / 30 if c is not None else None for c in calories_list]
     ax2.plot(dates, calories_scaled, color=color_calories, linewidth=2,
              marker='D', markersize=4, label='Калории (×30)', alpha=0.8, linestyle='--')
 
@@ -122,23 +133,35 @@ def format_metrics_message(metrics: dict) -> str:
     Форматирует метрики прогресса в текстовое сообщение.
 
     Args:
-        metrics: Словарь с метриками
+        metrics: Словарь с метриками (поля опциональны)
 
     Returns:
         Отформатированная строка с метриками
     """
-    weight_emoji = "📉" if metrics['weight_diff'] < 0 else "📈" if metrics['weight_diff'] > 0 else "➡️"
-    waist_emoji = "📉" if metrics['waist_diff'] < 0 else "📈" if metrics['waist_diff'] > 0 else "➡️"
-    neck_emoji = "📉" if metrics['neck_diff'] < 0 else "📈" if metrics['neck_diff'] > 0 else "➡️"
+    message_parts = ["📊 Прогресс:\n"]
 
-    message = (
-        f"📊 Прогресс:\n\n"
-        f"{weight_emoji} Вес: {metrics['weight_start']:.1f}кг → {metrics['weight_current']:.1f}кг "
-        f"({metrics['weight_diff']:+.1f}кг)\n"
-        f"{waist_emoji} Талия: {metrics['waist_start']:.1f}см → {metrics['waist_current']:.1f}см "
-        f"({metrics['waist_diff']:+.1f}см)\n"
-        f"{neck_emoji} Шея: {metrics['neck_start']:.1f}см → {metrics['neck_current']:.1f}см "
-        f"({metrics['neck_diff']:+.1f}см)\n"
-    )
+    # Вес
+    if 'weight_diff' in metrics:
+        weight_emoji = "📉" if metrics['weight_diff'] < 0 else "📈" if metrics['weight_diff'] > 0 else "➡️"
+        message_parts.append(
+            f"{weight_emoji} Вес: {metrics['weight_start']:.1f}кг → {metrics['weight_current']:.1f}кг "
+            f"({metrics['weight_diff']:+.1f}кг)\n"
+        )
 
-    return message
+    # Талия
+    if 'waist_diff' in metrics:
+        waist_emoji = "📉" if metrics['waist_diff'] < 0 else "📈" if metrics['waist_diff'] > 0 else "➡️"
+        message_parts.append(
+            f"{waist_emoji} Талия: {metrics['waist_start']:.1f}см → {metrics['waist_current']:.1f}см "
+            f"({metrics['waist_diff']:+.1f}см)\n"
+        )
+
+    # Шея
+    if 'neck_diff' in metrics:
+        neck_emoji = "📉" if metrics['neck_diff'] < 0 else "📈" if metrics['neck_diff'] > 0 else "➡️"
+        message_parts.append(
+            f"{neck_emoji} Шея: {metrics['neck_start']:.1f}см → {metrics['neck_current']:.1f}см "
+            f"({metrics['neck_diff']:+.1f}см)\n"
+        )
+
+    return "".join(message_parts)
