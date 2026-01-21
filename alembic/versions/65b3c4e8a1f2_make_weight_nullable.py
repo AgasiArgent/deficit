@@ -23,9 +23,20 @@ def upgrade() -> None:
     Сделать weight nullable для возможности создания записей только с калориями.
     SQLite требует recreation таблицы.
     """
-    # 1. Drop indices
-    op.drop_index('ix_measurements_date', table_name='measurements')
-    op.drop_index('ix_measurements_user_id', table_name='measurements')
+    # 1. Drop indices if they exist (SQLite-safe approach)
+    connection = op.get_bind()
+
+    # Check and drop ix_measurements_date if exists
+    try:
+        op.drop_index('ix_measurements_date', table_name='measurements')
+    except Exception:
+        pass  # Index doesn't exist, that's ok
+
+    # Check and drop ix_measurements_user_id if exists
+    try:
+        op.drop_index('ix_measurements_user_id', table_name='measurements')
+    except Exception:
+        pass  # Index doesn't exist, that's ok
 
     # 2. Create new table with nullable weight and calories
     op.create_table(
