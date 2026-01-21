@@ -4,6 +4,7 @@
 import io
 from datetime import date, timedelta
 from typing import List, Tuple, Optional
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.figure import Figure
@@ -67,12 +68,24 @@ def generate_progress_chart(
 
     # Основная ось Y (слева) - для веса
     color_weight = '#2E86AB'
+    color_secondary = '#666666'  # Серый цвет для правой оси
+
     ax1.set_xlabel('Дата', fontsize=12)
-    ax1.set_ylabel('Вес (кг)', color=color_weight, fontsize=12)
+    ax1.set_ylabel('Вес (кг)', color=color_weight, fontsize=12, fontweight='bold')
     ax1.plot(dates, weights, color=color_weight, linewidth=2.5,
              marker='o', markersize=6, label='Вес', alpha=0.9)
     ax1.tick_params(axis='y', labelcolor=color_weight)
     ax1.grid(True, alpha=0.3, linestyle='--')
+
+    # Установить шаг оси веса (0.5 кг = 500 грамм)
+    if weights_filtered:
+        min_weight = min(weights_filtered)
+        max_weight = max(weights_filtered)
+        # Округлить границы до 0.5 кг
+        weight_min = (min_weight // 0.5) * 0.5 - 0.5  # На 0.5 кг ниже
+        weight_max = (max_weight // 0.5 + 1) * 0.5 + 0.5  # На 0.5 кг выше
+        ax1.set_yticks(np.arange(weight_min, weight_max + 0.1, 0.5))
+        ax1.set_ylim(weight_min, weight_max)
 
     # Вторичная ось Y (справа) - для талии, шеи, калорий
     ax2 = ax1.twinx()
@@ -93,8 +106,8 @@ def generate_progress_chart(
     ax2.plot(dates, calories_scaled, color=color_calories, linewidth=2,
              marker='D', markersize=4, label='Калории (×30)', alpha=0.8, linestyle='--')
 
-    ax2.set_ylabel('Объемы (см) / Калории (×30)', fontsize=12)
-    ax2.tick_params(axis='y')
+    ax2.set_ylabel('Объемы (см) / Калории (×30)', color=color_secondary, fontsize=12, fontweight='bold')
+    ax2.tick_params(axis='y', labelcolor=color_secondary)
 
     # Форматирование оси X (даты)
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%d.%m'))
