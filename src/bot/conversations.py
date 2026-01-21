@@ -309,7 +309,10 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Создать ConversationHandler
 add_conversation_handler = ConversationHandler(
-    entry_points=[CommandHandler('add', add_start)],
+    entry_points=[
+        CommandHandler('add', add_start),
+        MessageHandler(filters.Regex("^📊 Внести данные$"), add_start)
+    ],
     states={
         DATE_SELECTION: [CallbackQueryHandler(date_selection_start, pattern='^selectdate_')],
         WEIGHT: [MessageHandler(filters.TEXT & ~filters.COMMAND, weight_input)],
