@@ -60,10 +60,10 @@ def upgrade() -> None:
         sa.UniqueConstraint('user_id', 'date', name='_user_date_uc')
     )
 
-    # 3. Copy data from old table
+    # 3. Copy data from old table (set updated_at = created_at for existing records)
     op.execute('''
         INSERT INTO measurements_new (id, user_id, date, weight, waist, neck, calories, created_at, updated_at)
-        SELECT id, user_id, date, weight, waist, neck, calories, created_at, updated_at
+        SELECT id, user_id, date, weight, waist, neck, calories, created_at, created_at
         FROM measurements
     ''')
 
