@@ -14,7 +14,7 @@ from telegram.ext import (
 from sqlalchemy.exc import IntegrityError
 
 from database.models import SessionLocal
-from database.queries import create_measurement
+from database.queries import create_measurement, update_or_create_calories
 
 # Состояния conversation
 WEIGHT, WAIST, NECK, CALORIES, DATE_SELECTION = range(5)
@@ -146,9 +146,15 @@ async def neck_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Проверка на пропуск
     if text in ['0', '-', 'skip', 'пропустить']:
         context.user_data['neck'] = None
+
+        # Вычислить дату для калорий (день назад от selected_date)
+        selected_date = context.user_data['selected_date']
+        calories_date = selected_date - timedelta(days=1)
+        calories_date_str = calories_date.strftime('%d.%m.%Y')
+
         await update.message.reply_text(
-            "⏭️ Шея: пропущено\n\n"
-            "Введи калории за вчера:"
+            f"⏭️ Шея: пропущено\n\n"
+            f"Введи калории за {calories_date_str}:"
         )
         return CALORIES
 
@@ -165,9 +171,14 @@ async def neck_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Сохраняем в context
         context.user_data['neck'] = neck
 
+        # Вычислить дату для калорий (день назад от selected_date)
+        selected_date = context.user_data['selected_date']
+        calories_date = selected_date - timedelta(days=1)
+        calories_date_str = calories_date.strftime('%d.%m.%Y')
+
         await update.message.reply_text(
             f"✅ Шея: {neck} см\n\n"
-            "Введи калории за вчера:"
+            f"Введи калории за {calories_date_str}:"
         )
         return CALORIES
 
@@ -235,29 +246,43 @@ async def calories_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         waist = context.user_data.get('waist')
         neck = context.user_data.get('neck')
 
+        # Вычислить дату для калорий (день назад)
+        calories_date = selected_date - timedelta(days=1)
+
         # Сохранить в БД
         db = SessionLocal()
         try:
+            # 1. Создать запись за selected_date с весом/талией/шеей (БЕЗ калорий)
             measurement = create_measurement(
                 db=db,
                 user_id=user_id,
                 measurement_date=selected_date,
                 weight=weight,
-                calories=calories,
                 waist=waist,
-                neck=neck
+                neck=neck,
+                calories=None  # Калории сохраняются отдельно за предыдущий день
+            )
+
+            # 2. Сохранить/обновить калории за предыдущий день
+            calories_measurement = update_or_create_calories(
+                db=db,
+                user_id=user_id,
+                measurement_date=calories_date,
+                calories=calories
             )
 
             date_str = selected_date.strftime("%d.%m.%Y")
+            calories_date_str = calories_date.strftime("%d.%m.%Y")
             waist_str = f"{waist} см" if waist else "пропущено"
             neck_str = f"{neck} см" if neck else "пропущено"
 
             success_message = (
                 f"✅ Данные сохранены!\n\n"
-                f"📅 Дата: {date_str}\n"
+                f"📅 За {date_str}:\n"
                 f"• Вес: {weight} кг\n"
                 f"• Талия: {waist_str}\n"
-                f"• Шея: {neck_str}\n"
+                f"• Шея: {neck_str}\n\n"
+                f"📅 За {calories_date_str}:\n"
                 f"• Калории: {calories} ккал\n\n"
                 f"Используй кнопки ниже для следующих действий."
             )

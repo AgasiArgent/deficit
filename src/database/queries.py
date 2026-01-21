@@ -13,8 +13,8 @@ def create_measurement(
     db: Session,
     user_id: int,
     measurement_date: date,
-    weight: float,
-    calories: int,
+    weight: Optional[float] = None,
+    calories: Optional[int] = None,
     waist: Optional[float] = None,
     neck: Optional[float] = None
 ) -> Measurement:
@@ -25,8 +25,8 @@ def create_measurement(
         db: Сессия БД
         user_id: Telegram user ID
         measurement_date: Дата замера
-        weight: Вес в кг
-        calories: Калории за день
+        weight: Вес в кг (опционально)
+        calories: Калории за день (опционально)
         waist: Объем талии в см (опционально)
         neck: Объем шеи в см (опционально)
 
@@ -47,6 +47,53 @@ def create_measurement(
     db.add(measurement)
     db.commit()
     db.refresh(measurement)
+    return measurement
+
+
+def update_or_create_calories(
+    db: Session,
+    user_id: int,
+    measurement_date: date,
+    calories: int
+) -> Measurement:
+    """
+    Обновить калории в существующей записи или создать новую запись только с калориями.
+
+    Args:
+        db: Сессия БД
+        user_id: Telegram user ID
+        measurement_date: Дата для калорий
+        calories: Калории за день
+
+    Returns:
+        Обновленная или созданная запись Measurement
+    """
+    # Попытаться найти существующую запись
+    measurement = db.query(Measurement).filter(
+        Measurement.user_id == user_id,
+        Measurement.date == measurement_date
+    ).first()
+
+    if measurement:
+        # Обновить калории в существующей записи
+        measurement.calories = calories
+        measurement.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(measurement)
+    else:
+        # Создать новую запись только с калориями
+        measurement = Measurement(
+            user_id=user_id,
+            date=measurement_date,
+            weight=None,
+            waist=None,
+            neck=None,
+            calories=calories
+        )
+        db.add(measurement)
+        db.commit()
+        db.refresh(measurement)
+
     return measurement
 
 

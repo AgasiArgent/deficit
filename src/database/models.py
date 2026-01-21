@@ -49,10 +49,10 @@ class Measurement(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, nullable=False, index=True)
     date = Column(Date, nullable=False, index=True)
-    weight = Column(Float, nullable=False)
-    waist = Column(Float, nullable=True)  # Теперь опционально
-    neck = Column(Float, nullable=True)   # Теперь опционально
-    calories = Column(Integer, nullable=False)
+    weight = Column(Float, nullable=True)  # Опционально (для записей только с калориями)
+    waist = Column(Float, nullable=True)   # Опционально (измеряется раз в неделю)
+    neck = Column(Float, nullable=True)    # Опционально (измеряется раз в неделю)
+    calories = Column(Integer, nullable=True)  # Опционально (за предыдущий день)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Ограничение: одна запись на день для пользователя

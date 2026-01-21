@@ -62,7 +62,7 @@ async def graph(update: Update, context: ContextTypes.DEFAULT_TYPE):
         measurements = get_measurements_by_period(db, user_id, period_days)
 
         if not measurements:
-            await update.message.reply_text(
+            await update.effective_message.reply_text(
                 "📊 Нет данных для отображения.\n\n"
                 "Добавь первую запись с помощью /add"
             )
@@ -72,7 +72,7 @@ async def graph(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chart_buf, metrics = generate_progress_chart(measurements, period_days)
 
         if not chart_buf:
-            await update.message.reply_text(
+            await update.effective_message.reply_text(
                 "❌ Ошибка при генерации графика. Попробуй позже."
             )
             return
@@ -91,14 +91,14 @@ async def graph(update: Update, context: ContextTypes.DEFAULT_TYPE):
         metrics_text = format_metrics_message(metrics)
 
         # Отправить график
-        await update.message.reply_photo(
+        await update.effective_message.reply_photo(
             photo=chart_buf,
             caption=metrics_text,
             reply_markup=reply_markup
         )
 
     except Exception as e:
-        await update.message.reply_text(
+        await update.effective_message.reply_text(
             f"❌ Ошибка: {str(e)}\n"
             f"Попробуй позже или обратись к разработчику."
         )
